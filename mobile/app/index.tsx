@@ -66,6 +66,13 @@ export default function Index() {
           <Text style={styles.description}>
             Monitore e refine a velocidade da sua fala. Selecione uma categoria para começar.
           </Text>
+          
+          <TouchableOpacity 
+            style={styles.historyButton}
+            onPress={() => router.push('/history')}
+          >
+            <Text style={styles.historyButtonText}>📜 Ver Histórico</Text>
+          </TouchableOpacity>
         </View>
 
         <ScrollView 
@@ -133,6 +140,20 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     maxWidth: 320,
     lineHeight: 20,
+  },
+  historyButton: {
+    marginTop: 20,
+    backgroundColor: '#262626',
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#3b82f6',
+  },
+  historyButtonText: {
+    color: '#3b82f6',
+    fontSize: 14,
+    fontWeight: '600',
   },
   scrollView: {
     flex: 1,

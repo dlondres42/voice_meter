@@ -117,6 +117,17 @@ export const apiService = {
       throw error;
     }
   },
+
+  getHistory: async () => {
+    console.log('📜 getHistory called');
+    try {
+      const response = await api.get('/api/v1/speech/history');
+      return response.data;
+    } catch (error: any) {
+      console.error('❌ Error in getHistory:', error);
+      throw error;
+    }
+  },
 };
 
 export default api;

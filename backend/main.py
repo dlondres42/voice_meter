@@ -2,6 +2,8 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
 from app.api.api import api_router
+from app.db.base import engine, Base
+from app.models import speech  # Import models to register them
 import logging
 
 # Configure logging
@@ -43,6 +45,9 @@ async def health_check():
 
 @app.on_event("startup")
 async def startup_event():
+    # Create tables
+    Base.metadata.create_all(bind=engine)
+    
     logger.info(f"🚀 Voice Meter API started!")
     logger.info(f"📍 API Base URL: {settings.API_PREFIX}")
     logger.info(f"📍 Health: /health")

@@ -40,3 +40,12 @@ class SpeechAnalysisResult(BaseModel):
 class SpeechAnalysisRequest(BaseModel):
     """Request for speech analysis"""
     category: str  # "presentation", "pitch", "conversation", "other"
+
+
+class SpeechHistoryItem(SpeechAnalysisResult):
+    """History item with ID and timestamp"""
+    id: int
+    created_at: str
+
+    class Config:
+        orm_mode = True
