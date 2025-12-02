@@ -2,7 +2,7 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-# Install system dependencies including audio libraries for librosa
+# Install system dependencies including audio libraries
 RUN apt-get update && apt-get install -y \
     gcc \
     g++ \

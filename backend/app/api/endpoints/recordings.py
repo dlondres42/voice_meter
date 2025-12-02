@@ -93,6 +93,36 @@ async def get_recording_detail(
         except:
             patterns_identified = []
     
+    # Parse text comparison JSON fields
+    missing_words = None
+    if recording.missing_words_json:
+        try:
+            missing_words = json.loads(recording.missing_words_json)
+        except:
+            missing_words = []
+    
+    extra_words = None
+    if recording.extra_words_json:
+        try:
+            extra_words = json.loads(recording.extra_words_json)
+        except:
+            extra_words = []
+    
+    mispronounced_words = None
+    if recording.mispronounced_words_json:
+        try:
+            mispronounced_words = json.loads(recording.mispronounced_words_json)
+        except:
+            mispronounced_words = []
+    
+    # Parse advanced analysis JSON
+    advanced_analysis = None
+    if recording.advanced_analysis_json:
+        try:
+            advanced_analysis = json.loads(recording.advanced_analysis_json)
+        except:
+            advanced_analysis = None
+    
     # Build the result dict manually to avoid ORM parsing issues with JSON fields
     result = RecordingDetail(
         id=recording.id,
@@ -123,6 +153,19 @@ async def get_recording_detail(
         recommendations=recommendations,
         patterns_identified=patterns_identified,
         notes=recording.notes,
+        # Text comparison fields
+        expected_text=recording.expected_text,
+        transcribed_text=recording.transcribed_text,
+        pronunciation_score=recording.pronunciation_score,
+        similarity_ratio=recording.similarity_ratio,
+        word_accuracy=recording.word_accuracy,
+        expected_word_count=recording.expected_word_count,
+        transcribed_word_count=recording.transcribed_word_count,
+        missing_words=missing_words,
+        extra_words=extra_words,
+        mispronounced_words=mispronounced_words,
+        # Advanced analysis
+        advanced_analysis=advanced_analysis,
     )
     
     return result
