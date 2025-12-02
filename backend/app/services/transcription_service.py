@@ -1,38 +1,34 @@
 """
-Transcription and text comparison service using Whisper
+Transcription and text comparison service using OpenAI Whisper API
 """
-import whisper
 import tempfile
 import os
 import logging
 import re
 from difflib import SequenceMatcher
-from typing import Dict, List, Tuple, Optional
+from typing import Dict, List, Optional
 import Levenshtein
+from openai import OpenAI
 
 logger = logging.getLogger(__name__)
 
 class TranscriptionService:
     """Service for transcribing audio and comparing with expected text"""
     
-    def __init__(self, model_size: str = "base"):
+    def __init__(self):
         """
-        Initialize the transcription service
+        Initialize the transcription service with OpenAI API
+        """
+        api_key = os.getenv("OPENAI_API_KEY")
+        if not api_key:
+            raise ValueError("OPENAI_API_KEY environment variable is required")
         
-        Args:
-            model_size: Whisper model size (tiny, base, small, medium, large)
-                       - tiny: fastest, less accurate
-                       - base: good balance for Portuguese
-                       - small: better accuracy
-                       - medium/large: best accuracy, slower
-        """
-        logger.info(f"🔄 Loading Whisper model: {model_size}")
-        self.model = whisper.load_model(model_size)
-        logger.info(f"✅ Whisper model loaded successfully")
+        self.client = OpenAI(api_key=api_key)
+        logger.info("✅ OpenAI Whisper API client initialized")
     
     def transcribe_audio(self, audio_data: bytes, language: str = "pt") -> Dict:
         """
-        Transcribe audio data to text using Whisper
+        Transcribe audio data to text using OpenAI Whisper API
         
         Args:
             audio_data: Raw audio bytes
@@ -41,40 +37,43 @@ class TranscriptionService:
         Returns:
             Dict with transcription results
         """
-        # Save audio to temporary file (Whisper needs a file path)
+        # Save audio to temporary file
         with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as temp_file:
             temp_file.write(audio_data)
             temp_path = temp_file.name
         
         try:
-            logger.info(f"🎤 Transcribing audio file: {temp_path}")
+            logger.info(f"🎤 Transcribing audio via OpenAI Whisper API...")
             
-            # Transcribe with Whisper
-            result = self.model.transcribe(
-                temp_path,
-                language=language,
-                task="transcribe",
-                verbose=False
-            )
+            # Open the audio file and send to OpenAI
+            with open(temp_path, "rb") as audio_file:
+                transcript = self.client.audio.transcriptions.create(
+                    model="whisper-1",
+                    file=audio_file,
+                    language=language,
+                    response_format="verbose_json"
+                )
             
-            transcribed_text = result["text"].strip()
+            transcribed_text = transcript.text.strip()
             logger.info(f"✅ Transcription complete: {transcribed_text[:100]}...")
             
-            # Extract word-level timing if available
-            segments = result.get("segments", [])
-            words_with_timing = []
-            for segment in segments:
-                words_with_timing.append({
-                    "text": segment["text"].strip(),
-                    "start": segment["start"],
-                    "end": segment["end"]
-                })
+            # Extract segments if available
+            segments = []
+            if hasattr(transcript, 'segments') and transcript.segments:
+                for segment in transcript.segments:
+                    segments.append({
+                        "text": segment.get("text", "").strip(),
+                        "start": segment.get("start", 0),
+                        "end": segment.get("end", 0)
+                    })
+            
+            duration = transcript.duration if hasattr(transcript, 'duration') else 0
             
             return {
                 "text": transcribed_text,
-                "language": result.get("language", language),
-                "segments": words_with_timing,
-                "duration": segments[-1]["end"] if segments else 0
+                "language": language,
+                "segments": segments,
+                "duration": duration
             }
             
         finally:
@@ -277,5 +276,5 @@ def get_transcription_service() -> TranscriptionService:
     """Get or create the transcription service singleton"""
     global _transcription_service
     if _transcription_service is None:
-        _transcription_service = TranscriptionService(model_size="base")
+        _transcription_service = TranscriptionService()
     return _transcription_service

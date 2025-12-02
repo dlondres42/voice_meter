@@ -3,6 +3,7 @@ from typing import Dict, List, Optional
 from sqlalchemy.orm import Session
 from app.services.speech_analyzer import SpeechAnalyzer
 from app.services.transcription_service import get_transcription_service
+from app.services.speech_analysis_service import get_speech_analysis_service
 from app.schemas.speech import SpeechAnalysisResult, SpeechHistoryItem
 from app.db.base import get_db
 from app.models.speech import SpeechHistory
@@ -133,6 +134,7 @@ async def analyze_speech(
         transcribed_text = None
         comparison_result = None
         pronunciation_score = None
+        advanced_analysis = None
         
         # Transcribe audio using Whisper
         try:
@@ -140,7 +142,23 @@ async def analyze_speech(
             transcription_service = get_transcription_service()
             transcription_result = transcription_service.transcribe_audio(audio_data)
             transcribed_text = transcription_result["text"]
+            segments = transcription_result.get("segments", [])
+            duration = transcription_result.get("duration", result['duration_seconds'])
             logger.info(f"✅ Transcription complete: {transcribed_text[:100]}...")
+            
+            # Perform advanced speech analysis based on research paper
+            try:
+                logger.info("📊 Performing advanced speech analysis...")
+                speech_analysis_service = get_speech_analysis_service()
+                advanced_analysis_obj = speech_analysis_service.analyze_comprehensive(
+                    transcribed_text,
+                    duration,
+                    segments
+                )
+                advanced_analysis = speech_analysis_service.to_dict(advanced_analysis_obj)
+                logger.info(f"✅ Advanced analysis complete - Overall: {advanced_analysis['overall_score']}")
+            except Exception as adv_e:
+                logger.error(f"⚠️ Advanced analysis failed: {str(adv_e)}")
             
             # Compare with expected text if provided
             if expected_text and expected_text.strip():
@@ -159,36 +177,29 @@ async def analyze_speech(
         # Calculate overall score (0-100) based on multiple factors
         score = 50  # Base score
         
-        # If we have pronunciation score, weight it heavily (40% of total)
+        # If we have advanced analysis, use it as primary score
+        if advanced_analysis:
+            score = advanced_analysis['overall_score'] * 0.5
+        
+        # If we have pronunciation score, add it (30% of total)
         if pronunciation_score is not None:
-            score = pronunciation_score * 0.4 + 30  # 40% from pronunciation
+            score += pronunciation_score * 0.3
         else:
             # Fallback to original scoring if no transcription
             if result['is_within_range']:
-                score += 30
+                score += 15
             else:
                 deviation = min(
                     abs(result['articulation_rate'] - result['ideal_min_ppm']),
                     abs(result['articulation_rate'] - result['ideal_max_ppm'])
                 )
-                score += max(0, 30 - (deviation / 2))
+                score += max(0, 15 - (deviation / 4))
         
-        # Score for intelligibility (+/- 20 points)
-        score += (result['intelligibility_score'] / 100) * 20
+        # Score for intelligibility (+/- 10 points)
+        score += (result['intelligibility_score'] / 100) * 10
         
-        # Score for pacing consistency (+/- 15 points)
-        score += result['pacing_consistency'] * 15
-        
-        # Score for pause management (+/- 10 points)
-        if result['pause_count'] > 0:
-            ideal_pause_duration = 0.5
-            pause_score = max(0, 10 - abs(result['avg_pause_duration'] - ideal_pause_duration) * 10)
-            score += pause_score
-        
-        # Score for speech efficiency (+/- 5 points)
-        speech_efficiency = result['active_speech_time'] / result['duration_seconds'] if result['duration_seconds'] > 0 else 0
-        if 0.7 <= speech_efficiency <= 0.9:
-            score += 5
+        # Score for pacing consistency (+/- 10 points)
+        score += result['pacing_consistency'] * 10
         
         overall_score = int(max(0, min(100, score)))
         
@@ -201,6 +212,10 @@ async def analyze_speech(
         
         # Generate recommendations
         recommendations = []
+        
+        # Add advanced analysis recommendations first
+        if advanced_analysis and advanced_analysis.get('recommendations'):
+            recommendations.extend(advanced_analysis['recommendations'])
         
         # Add comparison-based recommendations
         if comparison_result:
@@ -225,12 +240,19 @@ async def analyze_speech(
         
         # Identify patterns
         patterns = []
+        
+        # Add advanced analysis feedback as patterns
+        if advanced_analysis and advanced_analysis.get('feedback'):
+            patterns.extend(advanced_analysis['feedback'])
+        
         if result['local_variation_detected']:
             patterns.append("Variação de ritmo detectada em diferentes partes")
         
         if result['pause_count'] > result['duration_seconds'] / 5:
             patterns.append("Alto número de pausas - possível hesitação")
         
+        # Calculate speech efficiency (ratio of active speech to total duration)
+        speech_efficiency = result['active_speech_time'] / result['duration_seconds'] if result['duration_seconds'] > 0 else 0
         if speech_efficiency > 0.9:
             patterns.append("Fala muito contínua - adicione pausas")
         
@@ -274,6 +296,40 @@ async def analyze_speech(
                 volume_data_json=json.dumps(volume_data),
                 recommendations=json.dumps(recommendations) if recommendations else None,
                 patterns_identified=json.dumps(patterns) if patterns else None,
+                # Advanced analysis metrics - Language
+                detected_language=advanced_analysis['language']['detected_language'] if advanced_analysis else None,
+                language_confidence=advanced_analysis['language']['confidence'] if advanced_analysis else None,
+                # Speech Rate
+                speaking_rate_spm=advanced_analysis['speech_rate']['speaking_rate_spm'] if advanced_analysis else None,
+                articulation_rate_spm=advanced_analysis['speech_rate']['articulation_rate_spm'] if advanced_analysis else None,
+                speech_duration_seconds=advanced_analysis['speech_rate']['speech_duration_seconds'] if advanced_analysis else None,
+                pause_duration_total=advanced_analysis['speech_rate']['pause_duration_seconds'] if advanced_analysis else None,
+                speech_rate_classification=advanced_analysis['speech_rate']['classification'] if advanced_analysis else None,
+                # Pause metrics
+                total_pauses=advanced_analysis['pauses']['total_pauses'] if advanced_analysis else None,
+                total_pause_duration=advanced_analysis['pauses']['total_pause_duration'] if advanced_analysis else None,
+                average_pause_duration=advanced_analysis['pauses']['average_pause_duration'] if advanced_analysis else None,
+                longest_pause=advanced_analysis['pauses']['longest_pause'] if advanced_analysis else None,
+                pauses_per_minute=advanced_analysis['pauses']['pauses_per_minute'] if advanced_analysis else None,
+                pause_ratio=advanced_analysis['pauses']['pause_ratio'] if advanced_analysis else None,
+                # Vocabulary metrics
+                total_words=advanced_analysis['vocabulary']['total_words'] if advanced_analysis else None,
+                unique_words=advanced_analysis['vocabulary']['unique_words'] if advanced_analysis else None,
+                vocabulary_richness=advanced_analysis['vocabulary']['vocabulary_richness'] if advanced_analysis else None,
+                average_word_length=advanced_analysis['vocabulary']['average_word_length'] if advanced_analysis else None,
+                complex_words_count=advanced_analysis['vocabulary']['complex_words_count'] if advanced_analysis else None,
+                complex_words_ratio=advanced_analysis['vocabulary']['complex_words_ratio'] if advanced_analysis else None,
+                filler_words_count=advanced_analysis['vocabulary']['filler_words_count'] if advanced_analysis else None,
+                filler_words_ratio=advanced_analysis['vocabulary']['filler_words_ratio'] if advanced_analysis else None,
+                lexical_density=advanced_analysis['vocabulary']['lexical_density'] if advanced_analysis else None,
+                # Fluency metrics
+                fluency_score=advanced_analysis['fluency']['fluency_score'] if advanced_analysis else None,
+                hesitation_rate=advanced_analysis['fluency']['hesitation_rate'] if advanced_analysis else None,
+                repetition_count=advanced_analysis['fluency']['repetition_count'] if advanced_analysis else None,
+                self_corrections_count=advanced_analysis['fluency']['self_corrections_count'] if advanced_analysis else None,
+                incomplete_sentences=advanced_analysis['fluency']['incomplete_sentences'] if advanced_analysis else None,
+                # Full advanced analysis JSON
+                advanced_analysis_json=json.dumps(advanced_analysis) if advanced_analysis else None,
             )
             db.add(db_recording)
             db.commit()
@@ -298,6 +354,9 @@ async def analyze_speech(
         result['extra_words'] = comparison_result["extra_words"] if comparison_result else None
         result['mispronounced_words'] = comparison_result["mispronounced_words"] if comparison_result else None
         result['comparison_feedback'] = comparison_result["feedback"] if comparison_result else None
+        
+        # Add advanced analysis results
+        result['advanced_analysis'] = advanced_analysis
         
         return result
     except ValueError as e:

@@ -18,6 +18,14 @@ class MispronouncedWord(BaseModel):
     similarity: float
 
 
+class LanguageDetection(BaseModel):
+    """Language detection result"""
+    detected_language: str  # 'pt-BR', 'en-US', 'unknown'
+    confidence: float  # 0-1
+    portuguese_score: float
+    english_score: float
+
+
 class TextComparisonResult(BaseModel):
     """Result of text comparison between expected and transcribed"""
     expected_text: str
@@ -32,6 +40,61 @@ class TextComparisonResult(BaseModel):
     extra_words: List[str]
     mispronounced_words: List[MispronouncedWord]
     feedback: str
+
+
+class SpeechRateMetrics(BaseModel):
+    """Speech rate metrics based on research paper"""
+    speaking_rate_spm: float  # Syllables per minute (with pauses)
+    articulation_rate_spm: float  # Syllables per minute (without pauses)
+    words_per_minute: float
+    total_duration_seconds: float
+    speech_duration_seconds: float  # Duration without pauses
+    pause_duration_seconds: float
+    classification: str  # 'slow', 'medium', 'fast'
+
+
+class PauseMetrics(BaseModel):
+    """Pause analysis metrics"""
+    total_pauses: int
+    total_pause_duration: float
+    average_pause_duration: float
+    longest_pause: float
+    pauses_per_minute: float
+    pause_ratio: float
+
+
+class VocabularyMetrics(BaseModel):
+    """Vocabulary complexity metrics"""
+    total_words: int
+    unique_words: int
+    vocabulary_richness: float  # Type-Token Ratio
+    average_word_length: float
+    complex_words_count: int
+    complex_words_ratio: float
+    filler_words_count: int
+    filler_words_ratio: float
+    lexical_density: float
+
+
+class FluencyMetrics(BaseModel):
+    """Speech fluency metrics"""
+    fluency_score: float  # 0-100
+    hesitation_rate: float
+    repetition_count: int
+    self_corrections_count: int
+    incomplete_sentences: int
+
+
+class AdvancedSpeechAnalysis(BaseModel):
+    """Complete advanced speech analysis result"""
+    language: LanguageDetection
+    speech_rate: SpeechRateMetrics
+    pauses: PauseMetrics
+    vocabulary: VocabularyMetrics
+    fluency: FluencyMetrics
+    overall_score: float
+    feedback: List[str]
+    recommendations: List[str]
 
 
 class SpeechAnalysisResult(BaseModel):
@@ -52,6 +115,9 @@ class SpeechAnalysisResult(BaseModel):
     extra_words: Optional[List[str]] = None
     mispronounced_words: Optional[List[MispronouncedWord]] = None
     comparison_feedback: Optional[str] = None
+    
+    # Advanced speech analysis (NEW - based on research paper)
+    advanced_analysis: Optional[AdvancedSpeechAnalysis] = None
     
     # Primary metrics (Articulation Rate)
     words_per_minute: float  # AR - primary metric
@@ -156,6 +222,8 @@ class RecordingDetail(RecordingBase):
     missing_words: Optional[List[str]] = None
     extra_words: Optional[List[str]] = None
     mispronounced_words: Optional[List[MispronouncedWord]] = None
+    # Advanced speech analysis (based on research paper)
+    advanced_analysis: Optional[AdvancedSpeechAnalysis] = None
 
 
 class UserStats(BaseModel):

@@ -65,6 +65,47 @@ class Recording(Base):
     recommendations = Column(Text)  # JSON array of recommendations
     patterns_identified = Column(Text)  # JSON array of patterns
     
+    # Advanced speech analysis (based on research paper)
+    # Language detection
+    detected_language = Column(String(10), nullable=True)  # 'pt-BR', 'en-US'
+    language_confidence = Column(Float, nullable=True)
+    
+    # Speech Rate Metrics
+    speaking_rate_spm = Column(Float, nullable=True)  # Syllables per minute (with pauses)
+    articulation_rate_spm = Column(Float, nullable=True)  # Syllables per minute (without pauses)
+    speech_duration_seconds = Column(Float, nullable=True)  # Duration without pauses
+    pause_duration_total = Column(Float, nullable=True)  # Total pause time
+    speech_rate_classification = Column(String(20), nullable=True)  # slow/medium/fast
+    
+    # Pause Metrics
+    total_pauses = Column(Integer, nullable=True)
+    total_pause_duration = Column(Float, nullable=True)
+    average_pause_duration = Column(Float, nullable=True)
+    longest_pause = Column(Float, nullable=True)
+    pauses_per_minute = Column(Float, nullable=True)
+    pause_ratio = Column(Float, nullable=True)
+    
+    # Vocabulary Metrics
+    total_words = Column(Integer, nullable=True)
+    unique_words = Column(Integer, nullable=True)
+    vocabulary_richness = Column(Float, nullable=True)  # Type-Token Ratio
+    average_word_length = Column(Float, nullable=True)
+    complex_words_count = Column(Integer, nullable=True)
+    complex_words_ratio = Column(Float, nullable=True)
+    filler_words_count = Column(Integer, nullable=True)
+    filler_words_ratio = Column(Float, nullable=True)
+    lexical_density = Column(Float, nullable=True)
+    
+    # Fluency Metrics
+    fluency_score = Column(Float, nullable=True)  # 0-100
+    hesitation_rate = Column(Float, nullable=True)
+    repetition_count = Column(Integer, nullable=True)
+    self_corrections_count = Column(Integer, nullable=True)
+    incomplete_sentences = Column(Integer, nullable=True)
+    
+    # Advanced analysis JSON (full analysis)
+    advanced_analysis_json = Column(Text, nullable=True)
+    
     # User notes
     title = Column(String(200))  # User-provided title
     notes = Column(Text)  # User notes

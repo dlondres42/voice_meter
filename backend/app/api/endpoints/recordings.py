@@ -115,6 +115,14 @@ async def get_recording_detail(
         except:
             mispronounced_words = []
     
+    # Parse advanced analysis JSON
+    advanced_analysis = None
+    if recording.advanced_analysis_json:
+        try:
+            advanced_analysis = json.loads(recording.advanced_analysis_json)
+        except:
+            advanced_analysis = None
+    
     # Build the result dict manually to avoid ORM parsing issues with JSON fields
     result = RecordingDetail(
         id=recording.id,
@@ -156,6 +164,8 @@ async def get_recording_detail(
         missing_words=missing_words,
         extra_words=extra_words,
         mispronounced_words=mispronounced_words,
+        # Advanced analysis
+        advanced_analysis=advanced_analysis,
     )
     
     return result

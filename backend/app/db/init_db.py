@@ -9,7 +9,11 @@ from app.models.recording import Recording, UserStatistics
 
 
 def create_tables():
-    """Create all database tables"""
+    """Create all database tables (drop existing first)"""
+    # Drop all tables first to ensure schema is updated
+    Base.metadata.drop_all(bind=engine)
+    print("🗑️  Dropped existing tables")
+    
     Base.metadata.create_all(bind=engine)
     print("✅ Database tables created successfully")
 

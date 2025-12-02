@@ -30,6 +30,7 @@ services:
       SECRET_KEY: your-secret-key-change-in-production-please
       BACKEND_CORS_ORIGINS: http://localhost:3000,http://localhost:8081,http://localhost:19006
       DEBUG: "true"
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
     ports:
       - "8000:8000"
     volumes:
