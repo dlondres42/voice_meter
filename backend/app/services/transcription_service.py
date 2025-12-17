@@ -21,10 +21,11 @@ class TranscriptionService:
         """
         api_key = os.getenv("OPENAI_API_KEY")
         if not api_key:
-            raise ValueError("OPENAI_API_KEY environment variable is required")
-        
-        self.client = OpenAI(api_key=api_key)
-        logger.info("✅ OpenAI Whisper API client initialized")
+            logger.warning("⚠️ OPENAI_API_KEY not set - transcription will be disabled")
+            self.client = None
+        else:
+            self.client = OpenAI(api_key=api_key)
+            logger.info("✅ OpenAI Whisper API client initialized")
     
     def transcribe_audio(self, audio_data: bytes, language: str = "pt") -> Dict:
         """
@@ -37,6 +38,10 @@ class TranscriptionService:
         Returns:
             Dict with transcription results
         """
+        if not self.client:
+            logger.warning("⚠️ Transcription disabled - OPENAI_API_KEY not configured")
+            raise ValueError("OpenAI API key not configured")
+        
         # Save audio to temporary file
         with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as temp_file:
             temp_file.write(audio_data)
@@ -45,13 +50,14 @@ class TranscriptionService:
         try:
             logger.info(f"🎤 Transcribing audio via OpenAI Whisper API...")
             
-            # Open the audio file and send to OpenAI
+            # Open the audio file and send to OpenAI with timeout
             with open(temp_path, "rb") as audio_file:
                 transcript = self.client.audio.transcriptions.create(
                     model="whisper-1",
                     file=audio_file,
                     language=language,
-                    response_format="verbose_json"
+                    response_format="verbose_json",
+                    timeout=25.0  # 25 second timeout to leave buffer for Render
                 )
             
             transcribed_text = transcript.text.strip()
